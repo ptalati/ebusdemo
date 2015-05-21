@@ -1,0 +1,150 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+	
+    <title>Search Demo</title>
+    
+    <link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/south-street/jquery-ui.css" rel="stylesheet">
+    
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    
+    <style type="text/css">
+		html, body { height: 100%; }
+		
+		body { font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
+		
+		h2 { font-weight: normal; text-transform: uppercase; text-align: center; }
+		
+		form { display: block; }
+		form .form-element { display: block; }
+		form .form-element label { display: block; margin: 5px 0; }
+		form .form-element select { width: 100%; margin: 0 0 5px 0; }
+		form .form-element.action { display: block; margin: 20px 0 0 0; text-align: center; }
+		
+		.message { display: none; color: #000; font-size: 13px; font-weight: bold; width: 10px; height: 10px; position: absolute; }
+		
+		.no-update { background: #F00; }
+		.latest { background: #0F3; }
+		
+		.debug { display: none; background: #eee; padding: 1em 2em; font-size: 11px; height: 150px; overflow: auto; }
+	</style>
+    
+    <script type="text/javascript">
+		jQuery(document).ready(function($) {
+            $.ajax({
+				url: 'http://eapi.braindemo.com/api/bus.php?action=api&method=stations',
+				success: function (data) {
+					$.each(data, function (index, value) {
+						$("#from_destination").append($("<option></option>").attr("value", value.id).text(value.name));
+						$("#to_destination").append($("<option></option>").attr("value", value.id).text(value.name));
+					});
+				}
+			});
+			
+			check_data();
+			
+			$("form").submit(function (event) {
+				event.preventDefault();
+				
+				var data = $(this).serializeArray();
+				
+				$.ajax({
+					type: 'POST',
+					url: 'http://eapi.braindemo.com/api/bus.php',
+					data: data,
+					success: function (d) {
+						$(".bus-list").html('');
+						
+						$.each(d, function (index, value) {
+							$(".bus-list").append($("<li>" + value.name + " - Distance: " + value.distance.toFixed(2) + " km(s) - Last Station: " + value.station + "</li>"));
+						});
+					}
+				});
+			});
+        });
+		
+		function getFormattedDate(date) {
+			var year = date.getFullYear();
+			var month = (1 + date.getMonth()).toString();
+			var day = date.getDate().toString();
+			var hours = date.getHours();
+			var minutes = date.getMinutes();
+			var seconds = date.getSeconds();
+			
+			month = month.length > 1 ? month : '0' + month;
+			day = day.length > 1 ? day : '0' + day;
+			
+			return year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+		}
+		
+		function check_data() {
+			jQuery.ajax({
+				type: "GET",
+				url: "/api/bus.php?action=api&method=check&cdate=" + getFormattedDate(new Date()),
+				success: function(data) {
+					jQuery(".message").removeClass('no-update');
+					jQuery(".message").removeClass('latest');
+					
+					jQuery(".message").addClass(data.status);
+					jQuery(".message").show().delay(500).fadeOut();
+					
+					if (data.data.length > 0) {
+						$.each(data, function (index, value) {
+							$(".debug").prepend($("<p>" + getFormattedDate(new Date()) + " - " + objToString(value) + "</p>"));
+						});
+					} else {
+						$(".debug").prepend($("<p>" + getFormattedDate(new Date()) + " - no logs found</p>"));
+					}
+				}
+			});
+			
+			setTimeout( function(){ check_data(); }, 5000);
+		}
+		
+		function objToString (obj) {
+			var str = '';
+			
+			for (var p in obj) {
+				if (obj.hasOwnProperty(p)) {
+					str += p + '::' + obj[p] + '\n';
+				}
+			}
+			
+			return str;
+		}
+	</script>
+</head>
+
+<body>
+	<div class="message"></div>
+    
+	<h2>Search Form</h2>
+    
+	<form method="post" action="">
+    	<div class="form-element">
+            <label>From</label>
+            <select name="from_destination" id="from_destination"></select>
+		</div>
+        
+        <div class="form-element">
+            <label>To</label>
+            <select name="to_destination" id="to_destination"></select>
+        </div>
+        
+        <div class="form-element action">
+        	<input type="submit" value="Search" />
+        </div>
+        
+        <input type="hidden" name="action" value="api" />
+        <input type="hidden" name="method" value="search" />
+	</form>
+	
+	<ul class="bus-list"></ul>
+	
+	<div class="debug">
+		<p>debug code goes here</p>
+	</div>
+</body>
+</html>
